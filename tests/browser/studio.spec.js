@@ -14,10 +14,10 @@ test('Studio authoring, Lumen review bridge, image masks, and APKG export', asyn
   await expect(page.locator('.study-card .occlusion-image')).toHaveCount(3);
   await expect(page.locator('.study-card .cloze-face')).toHaveCount(3);
   await page.getByRole('button', { name: 'Review 6' }).click();
-  await expect(page.getByRole('dialog').locator('.cloze-face')).toBeVisible();
+  await expect(page.getByRole('main', { name: 'Flashcard review' }).locator('.cloze-face')).toBeVisible();
   await page.getByRole('button', { name: 'Reveal answer' }).click();
   await page.getByRole('button', { name: 'Good 10 min' }).click();
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.getByRole('button', { name: 'Back to flashcards' }).click();
   const state = await (await request.get('/api/state')).json();
   const topic = state.topics.find(t => t.title === 'The water cycle');
   const reviewed = topic.cards.find(c => c.reviews === 1); expect(reviewed).toBeTruthy();

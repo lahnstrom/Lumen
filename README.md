@@ -24,7 +24,7 @@ Open **http://localhost:4317**. If Codex is not signed in, select **Connect Code
 3. Discuss the topic with Lumen. Ask for explanations, retrieval questions, and worked cases.
 4. Choose **Build learning kit**. It creates a concept map and flashcards from your conversation and sources. Building again replaces the map and adds new cards, skipping exact duplicate questions.
 5. Select a concept to inspect its relationships and source attribution. Use **Edit map** to add and edit concepts, relationships, and sources.
-6. Edit cards, then **Review**. Reveal each answer before grading your recall.
+6. Edit cards, then **Review** to open a dedicated, phone-friendly page at `/review/<topic-id>`. Reveal each answer before grading your recall. You can reload or bookmark the page; saved scheduling persists, and learning cards return automatically when due. **Back to flashcards** returns to the topic.
 7. Open **Studio** for cloze editing, image occlusion, and `.apkg` export. Use **Use topic sources** to start from your material; **Add to Lumen reviews** connects enabled drafts to this topic’s FSRS queue. Existing Studio workspaces are also available from the sidebar.
 8. Select **Anki** to download a TSV. In Anki, import it as Basic notes with Front, Back, and Tags fields. Source attribution is included on the back.
 

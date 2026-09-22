@@ -106,5 +106,35 @@ test('learning cards return to an open review session when due', async ({ page, 
   await page.getByRole('button', { name: 'Again 1 min' }).click();
   await expect(page.getByText(/A learning card returns in/)).toBeVisible();
   await page.clock.install(); await page.clock.fastForward(61000);
-  await expect(page.getByRole('dialog').getByRole('heading', { name: 'What returns?' })).toBeVisible();
+  await expect(page.getByRole('main', { name: 'Flashcard review' }).getByRole('heading', { name: 'What returns?' })).toBeVisible();
+});
+
+test('review is a mobile page with reload, direct links and browser navigation', async ({ page, request }) => {
+  const topic = await (await request.post('/api/topics', { data: { title: 'Review navigation' } })).json();
+  await request.post(`/api/topics/${topic.id}/cards`, { data: { front: 'A focused question', back: 'A focused answer' } });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.evaluate(id => localStorage.setItem('lumen-topic', id), topic.id);
+  await page.reload();
+  await page.getByRole('button', { name: 'Flashcards', exact: true }).click();
+  await page.getByRole('button', { name: 'Review 1' }).click();
+  await expect(page).toHaveURL(new RegExp(`/review/${topic.id}$`));
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('complementary')).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'A focused question' })).toBeVisible();
+  await page.getByRole('button', { name: 'Reveal answer' }).click();
+  await expect(page.getByText('A focused answer', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: '/tmp/lumen-review-page-mobile.png', fullPage: true });
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'Review 1' })).toBeVisible();
+  await page.goForward();
+  await expect(page.getByRole('button', { name: 'Reveal answer' })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to flashcards' }).click();
+  await expect(page.getByRole('button', { name: 'Review 1' })).toBeVisible();
+  await page.goto(`/review/${topic.id}`);
+  await expect(page.getByRole('heading', { name: 'A focused question' })).toBeVisible();
+  await page.goto('/review/missing-topic');
+  await expect(page.getByRole('alert')).toHaveText('This learning space could not be found.');
 });
