@@ -17,8 +17,9 @@ export function streamedReply(buffer) {
   try { return JSON.parse(match[1] + '"'); } catch { return null; }
 }
 export function saveLearningReply(topic, bundle) {
-  applyBundle(topic, bundle, 'chat');
-  return { content: bundle.reply, artifacts: { cards: bundle.cards.length, concepts: bundle.nodes.length } };
+  const cardsBefore = topic.cards.length, conceptsBefore = topic.graph.nodes.length, connectionsBefore = topic.graph.edges.length;
+  const content = applyBundle(topic, bundle, 'chat');
+  return { content, artifacts: { cards: topic.cards.length - cardsBefore, concepts: topic.graph.nodes.length - conceptsBefore, connections: topic.graph.edges.length - connectionsBefore } };
 }
 export function recoverUnappliedBundles(db) {
   let recovered = 0;

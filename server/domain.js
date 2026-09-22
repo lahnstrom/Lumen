@@ -1,3 +1,4 @@
+import { mergeLearningGraph } from './graph.js';
 import { httpUrl } from '../shared/urls.js';
 import { newSchedule } from './scheduler.js';
 import { randomUUID } from 'node:crypto';
@@ -22,12 +23,12 @@ export function applyBundle(topic, bundle, mode) {
     if (!httpUrl(s.url)) continue;
     if (!topic.sources.some(old => old.url === s.url)) topic.sources.push({ ...s, id: id(), kind: 'web', addedAt: new Date().toISOString() });
   }
-  if (bundle.nodes?.length) {
-    const nodes = (bundle.nodes || []).slice(0, 16);
-    const ids = new Set(nodes.map(n => n.id));
-    topic.graph = { nodes, edges: (bundle.edges || []).filter(e => ids.has(e.from) && ids.has(e.to)) };
+  let skipped = 0;
+  if (bundle.nodes?.length || bundle.edges?.length) {
+    const merged = mergeLearningGraph(topic.graph, bundle.nodes || [], bundle.edges || []);
+    topic.graph = merged.graph; skipped = merged.skipped;
   }
   for (const c of bundle.cards || []) if (c.front && c.back && !topic.cards.some(old => old.front === c.front)) topic.cards.push({ ...c, id: id(), ...newSchedule() });
 
-  return bundle.reply;
+  return bundle.reply + (skipped ? `\n\nMap update: ${skipped} proposed concepts or connections could not be added because they were invalid or exceeded the map limits (50 concepts, 250 connections). Your existing map is preserved.` : '');
 }
