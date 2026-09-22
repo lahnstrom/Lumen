@@ -34,7 +34,7 @@ Open **http://localhost:4317**. If Codex is not signed in, select **Connect Code
 - Account credentials remain under Codex's management; Lumen does not copy them into its database or browser.
 - Source excerpts and your messages are sent to Codex for processing. This is not an offline AI model.
 - The server listens on loopback only, allows explicitly configured Tailscale Serve access, blocks other foreign hosts and cross-origin browser requests, and requests a read-only Codex sandbox. Tool approval requests are declined automatically.
-- Account details → **Download workspace backup** exports Lumen topics and review history as JSON. Studio media and its SQLite database are separate: back up the entire `data/` directory to preserve both. Restore is currently manual: stop the server and replace `data/workspace.json` with a valid backup.
+- **Codex connected → Download complete archive** exports saved Lumen records, Studio projects, and images in a ZIP with checksums and restore instructions. A smaller JSON export remains available. See [backup and restore instructions](docs/backups.md) for exclusions and the manual restore procedure.
 - Set `PORT`, `LUMEN_DATA_DIR`, or `CODEX_BIN` to override the port, storage directory, or Codex executable.
 - Do not expose this personal prototype to the public internet.
 
