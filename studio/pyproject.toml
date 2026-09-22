@@ -1,0 +1,23 @@
+[project]
+name = "flashcard-studio"
+version = "0.1.0"
+description = "Local multimodal Anki cloze and image occlusion creator"
+requires-python = ">=3.11"
+dependencies = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1", "python-multipart>=0.0.20,<1", "httpx>=0.28,<1", "beautifulsoup4>=4.12,<5", "pillow>=11,<13", "genanki==0.13.1"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "playwright>=1.50,<2", "anki>=25,<26"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["flashcards*"]
+
+[tool.setuptools.package-data]
+flashcards = ["static/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

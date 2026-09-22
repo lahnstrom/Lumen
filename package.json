@@ -8,7 +8,10 @@
     "build": "vite build",
     "start": "node server/index.js",
     "test": "node --test tests/*.test.js",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "setup:studio": "uv sync --directory studio",
+    "test:studio": "uv run --directory studio pytest -q",
+    "import:studio": "python3 scripts/import-studio.py"
   },
   "dependencies": {
     "express": "^5.1.0",

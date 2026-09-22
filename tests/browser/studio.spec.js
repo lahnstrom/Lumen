@@ -1,0 +1,63 @@
+import { test, expect } from '@playwright/test';
+
+test('Studio authoring, Lumen review bridge, image masks, and APKG export', async ({ page, request }) => {
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Flashcard Studio', exact: true }).click();
+  const frame = page.frameLocator('iframe[title="Flashcard Studio"]');
+  await frame.getByRole('button', { name: 'Try an example', exact: false }).click();
+  await expect(frame.getByLabel('Deck title')).toHaveValue('The water cycle');
+  await expect(frame.getByRole('option', { name: /OpenAI API/ })).toHaveCount(0);
+  await frame.getByRole('button', { name: 'Add to Lumen reviews' }).click();
+  await expect(page.getByRole('heading', { name: 'A little recall, a lasting memory' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review 6' })).toBeVisible();
+  await expect(page.locator('.study-card .occlusion-image')).toHaveCount(3);
+  await expect(page.locator('.study-card .cloze-face')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Review 6' }).click();
+  await expect(page.getByRole('dialog').locator('.cloze-face')).toBeVisible();
+  await page.getByRole('button', { name: 'Reveal answer' }).click();
+  await page.getByRole('button', { name: 'Good 10 min' }).click();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  const state = await (await request.get('/api/state')).json();
+  const topic = state.topics.find(t => t.title === 'The water cycle');
+  const reviewed = topic.cards.find(c => c.reviews === 1); expect(reviewed).toBeTruthy();
+  await page.getByRole('button', { name: 'Studio', exact: true }).click();
+  await expect(frame.getByLabel('Deck title')).toHaveValue('The water cycle');
+  const download = page.waitForEvent('download');
+  await frame.getByRole('button', { name: 'Download .apkg' }).click();
+  expect((await download).suggestedFilename()).toContain('.apkg');
+  await frame.getByRole('button', { name: 'Add to Lumen reviews' }).click();
+  const after = await (await request.get('/api/state')).json();
+  const updated = after.topics.find(t => t.id === topic.id);
+  expect(updated.cards).toHaveLength(6); expect(updated.cards.find(c => c.id === reviewed.id).fsrs).toEqual(reviewed.fsrs);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Studio', exact: true }).click();
+  await expect(frame.getByLabel('Deck title')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: '/tmp/lumen-studio-mobile.png', fullPage: true });
+  expect(errors).toEqual([]);
+});
+
+test('a topic can send its source text to Studio', async ({ page, request }) => {
+  const topic = await (await request.post('/api/topics', { data: { title: 'Source bridge' } })).json();
+  await request.post(`/api/topics/${topic.id}/sources`, { data: { title: 'Notes', content: 'Recall means retrieving knowledge from memory.' } });
+  await page.goto('/'); await page.getByRole('button', { name: 'Source bridge' }).click();
+  await page.getByRole('button', { name: 'Studio', exact: true }).click();
+  await page.getByRole('button', { name: 'Use topic sources' }).click();
+  const frame = page.frameLocator('iframe[title="Flashcard Studio"]');
+  await expect(frame.getByLabel('Deck title')).toHaveValue('Source bridge');
+  await expect(frame.locator('#source-text')).toContainText('');
+  await expect(frame.locator('#source-text')).toHaveValue(/Recall means retrieving knowledge/);
+});
+test('switching topic tabs preserves an unsaved Studio draft', async ({ page, request }) => {
+  const topic = await (await request.post('/api/topics', { data: { title: 'Draft preservation' } })).json();
+  const project = await (await request.post(`/api/topics/${topic.id}/studio`, { data: {} })).json();
+  await page.goto('/'); await page.getByRole('button', { name: 'Draft preservation' }).click();
+  await page.getByRole('button', { name: 'Studio', exact: true }).click();
+  const frame = page.frameLocator('iframe[title="Flashcard Studio"]');
+  await expect(frame.getByLabel('Deck title')).toHaveValue('Draft preservation');
+  await frame.getByLabel('Deck title').fill('Unsaved draft title');
+  await page.getByRole('button', { name: 'Sources', exact: true }).click();
+  await page.getByRole('button', { name: 'Studio', exact: true }).click();
+  await expect(frame.getByLabel('Deck title')).toHaveValue('Unsaved draft title');
+});

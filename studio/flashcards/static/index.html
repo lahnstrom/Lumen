@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Flashcard Studio</title><link rel="stylesheet" href="/studio/static/style.css"><script src="/studio/static/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/studio/">▧ <span>Flashcard Studio</span></a><span class="local">● LOCAL WORKSPACE</span></header>
+<main>
+<p class="hint">Part of Lumen · Your Codex subscription · Sources and drafts stay in your private workspace.</p>
+<section class="intro"><div class="eyebrow">READ LESS TWICE. REMEMBER MORE.</div><h1>From a page to<br><em>something that sticks.</em></h1><p>Turn your reading and diagrams into focused Anki cards.<br>Review the details. Cover the answers. Make it yours.</p></section>
+<section id="start" class="panel">
+ <div class="section-head"><h2>01 <span>Bring your material</span></h2><button id="demo" class="quiet">Try an example ↗</button></div>
+ <div class="input-grid"><div><label for="url">WEBPAGE URL</label><div class="inline"><input id="url" type="url" placeholder="https://…"><button id="import">Import page</button></div><p class="hint">Public pages with text and images. For login-only sites, paste the text and upload screenshots.</p><button id="generated-demo" class="quiet">Try the AI-illustrated example ↗</button></div>
+ <div><label for="new-title">OR START WITH YOUR NOTES</label><input id="new-title" placeholder="Topic or deck title"><textarea id="new-text" rows="4" placeholder="Paste your source text here…"></textarea><button id="create" class="secondary">Create workspace</button></div></div>
+ <div class="saved-row"><label for="projects">SAVED LOCALLY</label><select id="projects"><option value="">Open a previous workspace…</option></select></div>
+</section>
+<div id="status" role="status" aria-live="polite"></div>
+<section id="codex-monitor" class="panel" hidden>
+ <div class="section-head"><h2><span>Codex output</span></h2><span id="codex-run-state" class="hint" aria-live="polite"></span></div>
+ <p class="hint">Live activity for this workspace. Output appears when Codex emits it; quiet periods are normal.</p>
+ <pre id="codex-events" class="output-log" aria-label="Codex activity log"></pre>
+ <p id="codex-usage" class="hint"></p>
+ <details id="codex-result" hidden><summary>Returned JSON</summary><pre id="codex-output" class="output-log"></pre></details>
+</section>
+<section id="workspace" hidden>
+ <div class="workspace-head"><div><div class="eyebrow">YOUR WORKSPACE</div><input id="title" aria-label="Deck title" class="title-input"></div><div class="inline"><span id="save-state" class="hint">Saved locally</span><button id="send-lumen">Add to Lumen reviews</button><button id="save" class="secondary">Save</button><button id="download-package" class="secondary">Download .apkg</button><button id="export">Export to Anki & sync</button></div></div>
+ <div id="warnings" class="hint"></div>
+ <p class="hint">Export adds enabled notes to your selected/default deck and requests an AnkiWeb sync of the entire collection, not just that deck. Keep Anki open and signed in. Download .apkg only saves a package; it does not import or sync.</p>
+ <section class="panel"><div class="section-head"><h2><span>Add directly to Anki</span></h2><button id="anki-connect" class="secondary">Connect to Anki</button></div><p class="hint">Install AnkiConnect (add-on code 2055492159), restart Anki, and keep it open. Choose an existing deck below. Only checked notes and images are sent; previously sent notes are skipped, not updated.</p><div class="inline anki-controls"><select id="anki-deck" aria-label="Existing Anki deck"><option value="">Connect to load your decks…</option></select><button id="anki-default" class="secondary">Set as default deck</button><button id="anki-send">Add enabled notes</button></div><p id="anki-default-info" class="hint" aria-live="polite"></p><button id="anki-clear-default" class="quiet" hidden>Clear default deck</button></section>
+ <div class="workspace-grid">
+  <aside class="panel source-panel"><h2>02 <span>Shape the material</span></h2><label for="source">SOURCE / URL</label><input id="source"><label for="source-text">SOURCE TEXT</label><textarea id="source-text" rows="13"></textarea><p class="hint">Edits are saved when you click Save, generate or export.</p><label class="upload">＋ Add images<input type="file" id="upload" accept="image/png,image/jpeg,image/webp" multiple></label><p class="hint">PNG, JPEG or WebP · up to 8 images</p><hr><label for="mode">DRAFTING MODE</label><select id="mode"><option value="offline">Offline · definition extraction · free</option><option value="codex">Codex login · no API key</option></select><p id="ai-status" class="hint"></p><button id="generate" class="full">Suggest cards</button><p class="hint">Adds suggestions without replacing your edits. AI can suggest masks on images that have none.</p><div class="budget"><span id="budget-label">Usage</span><strong id="estimate">—</strong><small id="spend"></small></div></aside>
+  <div class="review-column">
+   <section class="panel" id="source-reader"><div class="section-head"><h2><span>Read & select your source</span></h2></div><div id="source-editor-slot"></div><p class="hint">Select a passage, then generate focused cloze notes from just that section. The count is a target, not a quota.</p><label for="target-cards">TARGET CLOZE NOTES (1–50 PER REQUEST)</label><input id="target-cards" type="number" min="1" max="50" value="20"><button id="generate-section" class="secondary">Generate clozes for selection</button><p id="selection-info" class="hint">No passage selected.</p><label class="check"><input id="generate-masks" type="checkbox" checked>Let the model suggest image masks during whole-page generation</label><p class="hint">Up to 500 cloze notes per workspace. Different cloze numbers within a note produce separate Anki cards.</p></section>
+   <section class="panel"><div class="section-head"><h2>03 <span>Cloze cards</span> <small id="cloze-count">0</small></h2><button id="add-cloze" class="quiet">＋ Add card</button></div><p class="hint">Use {{c1::answer}} to hide a phrase. Different numbers create separate cards. Uncheck a card to exclude it.</p><div id="clozes"></div></section>
+   <section class="panel"><div class="section-head"><h2>04 <span>Image occlusion</span></h2></div><p class="hint">Drag on an image to cover a label. Click a box to edit its answer or delete it. Switch to Preview to try the card. AI mask positions need a visual check.</p><div id="images"></div></section>
+  </div>
+ </div>
+</section>
+<footer>Made for deliberate learning. Your drafts stay on this computer.<br>Codex sends the source text and enabled images to OpenAI when you request generation.</footer>
+</main>
+</body></html>
