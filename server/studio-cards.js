@@ -1,3 +1,4 @@
+import { httpUrl } from '../shared/urls.js';
 import { randomUUID } from 'node:crypto';
 import { newSchedule } from './scheduler.js';
 const clozes = text => [...text.matchAll(/\{\{c([1-9]\d*)::([^{}]+?)\}\}/g)];
@@ -39,7 +40,7 @@ export function importStudioCards(topic, project, now = new Date()) {
   // Removed/unchecked Studio cards retain their memory history but leave the active queue.
   for (const c of topic.cards) if (c.studio?.projectId === project.id && !keys.has(c.studio.key)) { c.suspended = true; suspended++; }
   topic.studioProjects = [...new Set([...(topic.studioProjects || []), project.id])];
-  const source = { id: `studio-${project.id}`, kind: 'note', title: project.title, content: project.text, url: /^https?:\/\//i.test(project.source) ? project.source : '', note: 'Source from Flashcard Studio', addedAt: new Date(now).toISOString() };
+  const source = { id: `studio-${project.id}`, kind: 'note', title: project.title, content: project.text, url: httpUrl(project.source) ? project.source : '', note: 'Source from Flashcard Studio', addedAt: new Date(now).toISOString() };
   const existingSource = topic.sources.find(s => s.id === source.id);
   if (existingSource) Object.assign(existingSource, source); else topic.sources.push(source);
   return { added, updated, suspended, topicId: topic.id };

@@ -1,3 +1,4 @@
+import { httpUrl } from '../shared/urls.js';
 import { validateGraph, validatePosition, validConceptLink, pruneConceptLinks, conceptLinkFields } from './graph.js';
 import { AnkiBridge } from './anki.js';
 import { invokeAnki } from './anki-transport.js';
@@ -76,7 +77,7 @@ app.post('/api/topics/:topicId/studio', async (req, res) => {
   save(); res.json({ projectId: project.id });
 });
 app.patch('/api/topics/:topicId', (req, res) => { if (typeof req.body.title === 'string' && req.body.title.trim()) req.topic.title = req.body.title.trim().slice(0, 120); save(); res.json(req.topic); });
-app.post('/api/topics/:topicId/sources', (req, res) => { const { title, content, url } = req.body; if (!String(title || '').trim()) return res.status(400).json({ error: 'A source title is required.' }); if (url && !/^https?:\/\//i.test(url)) return res.status(400).json({ error: 'Use an http or https link.' }); req.topic.sources.push({ id: id(), title: String(title).slice(0, 200), content: String(content || '').slice(0, 100000), url: url || '', kind: url ? 'link' : 'note', addedAt: new Date().toISOString() }); save(); res.json(req.topic); });
+app.post('/api/topics/:topicId/sources', (req, res) => { const { title, content, url } = req.body; if (!String(title || '').trim()) return res.status(400).json({ error: 'A source title is required.' }); if (url && !httpUrl(url)) return res.status(400).json({ error: 'Use a complete http or https link with a valid hostname.' }); req.topic.sources.push({ id: id(), title: String(title).slice(0, 200), content: String(content || '').slice(0, 100000), url: url || '', kind: url ? 'link' : 'note', addedAt: new Date().toISOString() }); save(); res.json(req.topic); });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 app.post('/api/topics/:topicId/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Choose a file.' });
@@ -94,8 +95,8 @@ app.post('/api/topics/:topicId/upload', upload.single('file'), async (req, res) 
   req.topic.sources.push({ id: id(), title: req.file.originalname, content, kind: 'file', addedAt: new Date().toISOString() }); save(); res.json(req.topic);
 });
 app.delete('/api/topics/:topicId/sources/:sourceId', (req, res) => { req.topic.sources = req.topic.sources.filter(s => s.id !== req.params.sourceId); save(); res.json(req.topic); });
-app.post('/api/topics/:topicId/cards', (req, res) => { const { front, back, source = '' } = req.body; if (!front?.trim() || !back?.trim()) return res.status(400).json({ error: 'Both sides of the card are required.' }); req.topic.cards.push({ id: id(), front: front.trim(), back: back.trim(), source, ...newSchedule() }); save(); res.json(req.topic); });
-app.patch('/api/topics/:topicId/cards/:cardId', (req, res) => { const c = req.topic.cards.find(c => c.id === req.params.cardId); if (!c) return res.status(404).json({ error: 'Card not found.' }); const updated = { ...c }; for (const k of ['front', 'back', 'source']) if (typeof req.body[k] === 'string') updated[k] = req.body[k]; if (!updated.front.trim() || !updated.back.trim()) return res.status(400).json({ error: 'Both sides are required.' }); Object.assign(c, updated); save(); res.json(req.topic); });
+app.post('/api/topics/:topicId/cards', (req, res) => { const { front, back, source = '' } = req.body; if (typeof front !== 'string' || typeof back !== 'string' || !front.trim() || !back.trim()) return res.status(400).json({ error: 'Both sides of the card are required.' }); if (typeof source !== 'string') return res.status(400).json({ error: 'The source must be a title or URL.' }); req.topic.cards.push({ id: id(), front: front.trim(), back: back.trim(), source, ...newSchedule() }); save(); res.json(req.topic); });
+app.patch('/api/topics/:topicId/cards/:cardId', (req, res) => { const c = req.topic.cards.find(c => c.id === req.params.cardId); if (!c) return res.status(404).json({ error: 'Card not found.' }); if (['front', 'back', 'source'].some(k => Object.hasOwn(req.body, k) && typeof req.body[k] !== 'string')) return res.status(400).json({ error: 'Card questions, answers, and sources must be text.' }); const updated = { ...c }; for (const k of ['front', 'back', 'source']) if (typeof req.body[k] === 'string') updated[k] = req.body[k]; if (!updated.front.trim() || !updated.back.trim()) return res.status(400).json({ error: 'Both sides are required.' }); Object.assign(c, updated); save(); res.json(req.topic); });
 app.delete('/api/topics/:topicId/cards/:cardId', (req, res) => { req.topic.cards = req.topic.cards.filter(c => c.id !== req.params.cardId); for (const node of req.topic.graph.nodes) if (node.cardIds) node.cardIds = node.cardIds.filter(id => id !== req.params.cardId); save(); res.json(req.topic); });
 const reviewPreviews = new Map();
 app.get('/api/topics/:topicId/cards/:cardId/preview', async (req, res) => {

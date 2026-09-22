@@ -1,3 +1,4 @@
+import { httpUrl } from '../shared/urls.js';
 import { newSchedule } from './scheduler.js';
 import { randomUUID } from 'node:crypto';
 export const id = () => randomUUID();
@@ -18,7 +19,7 @@ export const bundleSchema = {
 export function applyBundle(topic, bundle, mode) {
   if (typeof bundle.reply !== 'string') throw new Error('Codex returned an invalid learning bundle.');
   for (const s of bundle.sources || []) {
-    if (!/^https?:\/\//i.test(s.url)) continue;
+    if (!httpUrl(s.url)) continue;
     if (!topic.sources.some(old => old.url === s.url)) topic.sources.push({ ...s, id: id(), kind: 'web', addedAt: new Date().toISOString() });
   }
   if (bundle.nodes?.length) {

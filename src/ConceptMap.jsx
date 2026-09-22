@@ -1,3 +1,4 @@
+import { httpUrl } from '../shared/urls.js';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType, useNodesState } from '@xyflow/react';
 import { ArrowUpRight, BookOpen, Check, Download, Layers, Link2, LocateFixed, Maximize2, Network, Pencil, Search, Sparkles, X } from 'lucide-react';
@@ -15,7 +16,7 @@ function ConceptNode({ data, selected }) {
   </div>;
 }
 const nodeTypes = { concept: ConceptNode };
-const safeURL = text => /^https?:\/\//i.test(text || '');
+const safeURL = text => !!httpUrl(text);
 
 function CrossLinkEditor({ edge, save, busy }) {
   const [label, setLabel] = useState(edge.label), [source, setSource] = useState(edge.data.source || '');
