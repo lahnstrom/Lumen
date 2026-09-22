@@ -41,7 +41,7 @@ test('Studio authoring, Lumen review bridge, image masks, and APKG export', asyn
 test('a topic can send its source text to Studio', async ({ page, request }) => {
   const topic = await (await request.post('/api/topics', { data: { title: 'Source bridge' } })).json();
   await request.post(`/api/topics/${topic.id}/sources`, { data: { title: 'Notes', content: 'Recall means retrieving knowledge from memory.' } });
-  await page.goto('/'); await page.getByRole('button', { name: 'Source bridge' }).click();
+  await page.goto('/'); await page.getByRole('navigation').getByRole('button', { name: 'Source bridge' }).click();
   await page.getByRole('button', { name: 'Studio', exact: true }).click();
   await page.getByRole('button', { name: 'Use topic sources' }).click();
   const frame = page.frameLocator('iframe[title="Flashcard Studio"]');
@@ -52,7 +52,7 @@ test('a topic can send its source text to Studio', async ({ page, request }) => 
 test('switching topic tabs preserves an unsaved Studio draft', async ({ page, request }) => {
   const topic = await (await request.post('/api/topics', { data: { title: 'Draft preservation' } })).json();
   const project = await (await request.post(`/api/topics/${topic.id}/studio`, { data: {} })).json();
-  await page.goto('/'); await page.getByRole('button', { name: 'Draft preservation' }).click();
+  await page.goto('/'); await page.getByRole('navigation').getByRole('button', { name: 'Draft preservation' }).click();
   await page.getByRole('button', { name: 'Studio', exact: true }).click();
   const frame = page.frameLocator('iframe[title="Flashcard Studio"]');
   await expect(frame.getByLabel('Deck title')).toHaveValue('Draft preservation');

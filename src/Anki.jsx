@@ -1,0 +1,26 @@
+import React, { useState } from 'react';
+import { Check, RefreshCw, Link2, ArrowUpRight, Loader2, X } from 'lucide-react';
+
+export function AnkiPanel({ topic, status = {}, api, refresh }) {
+  const [open, setOpen] = useState(false), [connection, setConnection] = useState(null), [deck, setDeck] = useState(`Lumen::${topic.title}`), [busy, setBusy] = useState(false), [error, setError] = useState('');
+  async function run(fn) { setBusy(true); setError(''); try { await fn(); await refresh(); } catch (e) { setError(e.message); } finally { setBusy(false); } }
+  const linked = topic.cards.filter(c => c.anki?.cardId).length;
+  const conflicts = topic.cards.filter(c => c.anki?.contentConflict).length;
+  return <section className="anki-panel" aria-label="Anki synchronization"><div className="anki-summary"><span className={'sync-icon ' + (status.connected && topic.anki?.enabled ? 'connected' : '')}><Link2 size={20}/></span><div><strong>{topic.anki?.enabled ? 'Connected to Anki' : 'One collection. Study anywhere.'}</strong><p>{topic.anki?.enabled ? `${linked} linked cards · ${topic.anki.deck}${status.lastPullAt ? ` · Updated ${new Date(status.lastPullAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}` : 'Keep reviews in Lumen and Anki together, including your phone through AnkiWeb.'}</p></div><button className="button secondary" disabled={busy} onClick={() => topic.anki?.enabled ? run(() => api('/anki/sync', { method: 'POST' })) : run(async () => { setOpen(true); setConnection(await api('/anki/connection')); })}>{busy ? <Loader2 size={15} className="spin"/> : topic.anki?.enabled ? <RefreshCw size={15}/> : <Link2 size={15}/>} {topic.anki?.enabled ? 'Sync now' : 'Connect Anki'}</button></div>
+    {(error || (topic.anki?.enabled && status.error)) && <p className="form-error" role="alert">{error || status.error}</p>}
+    {topic.anki?.enabled && status.webError && <p className="sync-notice" role="status">Your desktop review status is saved. {status.webError}</p>}
+    {topic.anki?.error && <p className="sync-notice" role="status">Some cards could not be sent: {topic.anki.error} Existing linked reviews still synchronize.</p>}
+    {!!conflicts && <p className="sync-notice">{conflicts} cards were edited in both apps. Reviews use Anki’s current content; Lumen has kept your local edits without overwriting Anki. <button className="text-button" disabled={busy} onClick={() => run(() => api(`/topics/${topic.id}/anki/keep-remote`, { method: 'POST' }))}>Keep Anki versions</button></p>}
+    {topic.cards.some(c => c.anki?.missing || c.anki?.error) && <p className="sync-notice">Some linked cards are unavailable. Restore missing cards or their identity tags in Anki, then sync. Lumen will not recreate deleted cards.</p>}
+    {open && !topic.anki?.enabled && <div className="anki-setup"><button className="anki-setup-close" aria-label="Close Anki setup" onClick={() => setOpen(false)}><X size={16}/></button><h3>Connect this learning space</h3><p>Keep desktop Anki open with AnkiConnect. Lumen checks for reviews every 15 seconds and requests AnkiWeb sync every two minutes and after your answers.</p>{connection && <><p>Profile: <strong>{connection.profile}</strong></p><label>Anki deck<input list="anki-decks" aria-label="Anki deck" value={deck} onChange={e => setDeck(e.target.value)}/><datalist id="anki-decks">{connection.decks.map(d => <option key={d} value={d}/>)}</datalist></label><p className="sync-notice">Existing Studio exports are linked by identity. New notes start with Anki’s schedule; your {topic.cards.reduce((n, c) => n + (c.reviews || 0), 0)} previous Lumen reviews remain in your history. We do not rewrite Anki’s past reviews. Anki’s deck settings control future intervals. Lumen shows all due linked cards, independently of Anki’s daily study limits.</p><button className="button" disabled={busy || !deck.trim()} onClick={() => run(async () => { await api(`/topics/${topic.id}/anki`, { method: 'POST', body: { deck } }); setOpen(false); })}>Connect & sync<Check size={16}/></button></>}<a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer" className="text-button">AnkiConnect setup<ArrowUpRight size={14}/></a></div>}
+  </section>;
+}
+
+export function AnkiFace({ card, answer }) {
+  const origin = location.origin;
+  const content = answer ? card.anki.answer : card.anki.question;
+  // Anki templates are arbitrary HTML. An opaque sandbox and restrictive CSP disable scripts,
+  // navigation, remote tracking, and forms, while allowing protected local media.
+  const document = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${origin} data:; media-src ${origin}; style-src 'unsafe-inline'; font-src 'none'; form-action 'none'; base-uri ${origin}"><base href="${origin}/api/anki/media/"><style>html,body{margin:0;padding:8px;color:#253c34;background:#fffefa;font:20px/1.65 system-ui;overflow-wrap:anywhere}img{max-width:100%;height:auto} ${String(card.anki.css || '').replace(/<\/style/gi, '')}</style></head><body class="card">${content || ''}</body></html>`;
+  return <iframe className="anki-card-face" title={answer ? 'Anki answer' : 'Anki question'} sandbox="" referrerPolicy="no-referrer" srcDoc={document}/>;
+}

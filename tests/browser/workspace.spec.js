@@ -28,7 +28,7 @@ test('study workspace persists sources, editable graph, cards, review and export
   await page.getByLabel('Connection 1 source').fill('Study notes');
   await page.getByRole('button', { name: 'Save map' }).click();
   await page.getByRole('button', { name: 'Retrieval', exact: true }).click();
-  await expect(page.getByText('Recall from memory.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Concept details' }).getByText('Recall from memory.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Flashcards', exact: true }).click();
   await page.getByRole('button', { name: 'Add card' }).click();
   await page.getByLabel('Question').fill('What is retrieval practice?');
@@ -99,7 +99,7 @@ test('FSRS previews commit exact intervals, record full history, and reject dupl
 test('learning cards return to an open review session when due', async ({ page, request }) => {
   const t = await (await request.post('/api/topics', { data: { title: 'Learning queue' } })).json();
   await request.post(`/api/topics/${t.id}/cards`, { data: { front: 'What returns?', back: 'A learning card.' } });
-  await page.goto('/'); await page.getByRole('button', { name: 'Learning queue' }).click();
+  await page.goto('/'); await page.getByRole('navigation').getByRole('button', { name: 'Learning queue' }).click();
   await page.getByRole('button', { name: 'Flashcards' }).click();
   await page.getByRole('button', { name: 'Review 1' }).click();
   await page.getByRole('button', { name: 'Reveal answer' }).click();

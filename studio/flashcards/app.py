@@ -214,3 +214,10 @@ class AnkiRequest(BaseModel):
 def send_anki(project_id: str, body: AnkiRequest):
     with project_lock(project_id):
         return anki_connect.send_and_sync(storage.get(project_id), body.deck)
+
+
+@app.get('/api/projects/{project_id}/anki-bundle')
+def lumen_anki_bundle(project_id: str):
+    from .lumen_anki import bundle
+    with project_lock(project_id):
+        return bundle(storage.get(project_id))

@@ -11,9 +11,12 @@
     "test:e2e": "playwright test",
     "setup:studio": "uv sync --directory studio",
     "test:studio": "uv run --directory studio pytest -q",
-    "import:studio": "python3 scripts/import-studio.py"
+    "import:studio": "python3 scripts/import-studio.py",
+    "test:anki": "node --test tests/integration/anki.test.js"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
+    "@xyflow/react": "^12.11.6",
     "express": "^5.1.0",
     "lucide-react": "^0.468.0",
     "multer": "^2.0.2",
