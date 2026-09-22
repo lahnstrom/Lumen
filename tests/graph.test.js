@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGraph, layoutGraph, neighborhood, canvasExport } from '../src/graph-model.js';
-import { validateGraph, validatePosition, pruneConceptLinks } from '../server/graph.js';
+import { validateGraph, validatePosition, pruneConceptLinks, conceptLinkFields } from '../server/graph.js';
 const topics = [
   { id: 'a', title: 'Heart', cards: [], graph: { nodes: [{ id: 'same', label: 'Pressure', description: 'Cardiac pressure' }, { id: 'flow', label: 'Flow' }], edges: [{ from: 'same', to: 'flow', label: 'drives' }] } },
   { id: 'b', title: 'Lung', cards: [], graph: { nodes: [{ id: 'same', label: 'Pressure', description: 'Airway pressure' }], edges: [] } },
@@ -23,4 +23,16 @@ test('graph validation rejects invalid coordinates, dangling edges and foreign f
   assert.throws(() => validatePosition({ x: Infinity, y: 0 })); assert.throws(() => validateGraph({ nodes: [], edges: [{ from: 'missing', to: 'missing', label: 'x' }] }));
   assert.throws(() => validateGraph({ nodes: [{ id: 'a', label: 'A', cardIds: ['other'] }], edges: [] }, []));
   assert.equal(validateGraph(topics[0].graph).nodes.length, 2);
+});
+
+
+test('relationship evidence is validated and preserved in portable canvas exports', () => {
+  assert.deepEqual(conceptLinkFields({ label: ' relates to ', source: ' Textbook, p. 12 ' }), { label: 'relates to', source: 'Textbook, p. 12' });
+  assert.throws(() => conceptLinkFields({ label: ' ' }));
+  assert.throws(() => conceptLinkFields({ label: 'x'.repeat(121) }));
+  assert.throws(() => conceptLinkFields({ label: 'relates to', source: {} }));
+  const link = { id: 'link', fromTopic: 'a', fromNode: 'same', toTopic: 'b', toNode: 'same', label: 'compare', source: 'Textbook, p. 12' };
+  const model = buildGraph(topics, [link], 'a', true);
+  const canvas = canvasExport(layoutGraph(model.nodes, model.edges), model.edges);
+  assert.equal(canvas.edges.find(e => e.id === 'link').label, 'compare\nSource: Textbook, p. 12');
 });

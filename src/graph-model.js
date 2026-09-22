@@ -4,7 +4,7 @@ export function buildGraph(topics, links = [], currentTopic, atlas = false) {
   const visible = atlas ? topics : topics.filter(t => t.id === currentTopic);
   const nodes = visible.flatMap(topic => topic.graph.nodes.map(node => ({
     id: nodeKey(topic.id, node.id), type: 'concept', position: node.position || { x: 0, y: 0 },
-    data: { ...node, topicId: topic.id, topicTitle: topic.title, cards: topic.cards.filter(c => !c.suspended && node.cardIds?.includes(c.id)) },
+    data: { ...node, topicId: topic.id, topicTitle: topic.title, cards: topic.cards.filter(c => node.cardIds?.includes(c.id)) },
   })));
   const ids = new Set(nodes.map(n => n.id));
   const edges = visible.flatMap(topic => topic.graph.edges.map((edge, i) => ({
@@ -31,6 +31,6 @@ export function neighborhood(nodes, edges, selected) {
 export function canvasExport(nodes, edges) {
   return {
     nodes: nodes.map(n => ({ id: n.id, type: 'text', x: Math.round(n.position.x), y: Math.round(n.position.y), width: 270, height: 180, text: `# ${n.data.label}\n\n${n.data.description || ''}\n\nSpace: ${n.data.topicTitle}` })),
-    edges: edges.map(e => ({ id: e.id, fromNode: e.source, fromSide: 'right', toNode: e.target, toSide: 'left', toEnd: 'arrow', label: e.label || '' })),
+    edges: edges.map(e => ({ id: e.id, fromNode: e.source, fromSide: 'right', toNode: e.target, toSide: 'left', toEnd: 'arrow', label: [e.label, e.data?.source ? `Source: ${e.data.source}` : ''].filter(Boolean).join('\n') })),
   };
 }

@@ -1,4 +1,4 @@
-import { validateGraph, validatePosition, validConceptLink, pruneConceptLinks } from './graph.js';
+import { validateGraph, validatePosition, validConceptLink, pruneConceptLinks, conceptLinkFields } from './graph.js';
 import { AnkiBridge } from './anki.js';
 import { invokeAnki } from './anki-transport.js';
 import { parseLearningReply, streamedReply, saveLearningReply, recoverUnappliedBundles } from './chat-artifacts.js';
@@ -136,17 +136,28 @@ app.patch('/api/topics/:topicId/graph/layout', (req, res) => {
 });
 app.post('/api/topics/:topicId/graph/cards', (req, res) => {
   const node = req.topic.graph.nodes.find(n => n.id === req.body.nodeId);
-  if (!node || !req.topic.cards.some(c => c.id === req.body.cardId)) throw new Error('Choose a concept and card in this space.');
-  node.cardIds = [...new Set([...(node.cardIds || []), req.body.cardId])]; save(); res.json(req.topic.graph);
+  if (!node || (req.body.remove !== true && !req.topic.cards.some(c => c.id === req.body.cardId))) throw new Error('Choose a concept and card in this space.');
+  node.cardIds = req.body.remove === true ? (node.cardIds || []).filter(id => id !== req.body.cardId) : [...new Set([...(node.cardIds || []), req.body.cardId])]; save(); res.json(req.topic.graph);
 });
 app.post('/api/concept-links', (req, res) => {
   const { fromTopic, fromNode, toTopic, toNode } = req.body;
-  const link = { id: id(), fromTopic, fromNode, toTopic, toNode, label: String(req.body.label || '').trim().slice(0, 120) };
+  const link = { id: id(), fromTopic, fromNode, toTopic, toNode, ...conceptLinkFields(req.body) };
   if (!link.label || fromTopic === toTopic || !validConceptLink(db, link)) throw new Error('Choose two existing concepts in different spaces and name the relationship.');
   db.conceptLinks ||= [];
-  if (db.conceptLinks.length >= 1000) throw new Error('The atlas supports up to 1,000 cross-space connections.');
-  if (!db.conceptLinks.some(l => ['fromTopic', 'fromNode', 'toTopic', 'toNode', 'label'].every(k => l[k] === link[k]))) db.conceptLinks.push(link);
+  const existing = db.conceptLinks.find(l => ['fromTopic', 'fromNode', 'toTopic', 'toNode', 'label'].every(k => l[k] === link[k]));
+  if (existing && (existing.source || '') !== link.source) throw new Error('This connection already exists. Select its line in the atlas to edit its source.');
+  if (!existing) {
+    if (db.conceptLinks.length >= 1000) throw new Error('The atlas supports up to 1,000 cross-space connections.');
+    db.conceptLinks.push(link);
+  }
   save(); res.json(db.conceptLinks);
+});
+app.patch('/api/concept-links/:linkId', (req, res) => {
+  const link = (db.conceptLinks || []).find(l => l.id === req.params.linkId);
+  if (!link) return res.status(404).json({ error: 'Connection no longer exists.' });
+  const fields = conceptLinkFields({ ...link, ...req.body });
+  if (db.conceptLinks.some(l => l.id !== link.id && ['fromTopic', 'fromNode', 'toTopic', 'toNode'].every(k => l[k] === link[k]) && l.label === fields.label)) throw new Error('That relationship already exists between these concepts.');
+  Object.assign(link, fields); save(); res.json(link);
 });
 app.delete('/api/concept-links/:linkId', (req, res) => { db.conceptLinks = (db.conceptLinks || []).filter(l => l.id !== req.params.linkId); save(); res.json(db.conceptLinks); });
 

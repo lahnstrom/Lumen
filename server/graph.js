@@ -14,3 +14,8 @@ export function validConceptLink(db, link) {
   return db.topics.some(t => t.id === link.fromTopic && t.graph.nodes.some(n => n.id === link.fromNode)) && db.topics.some(t => t.id === link.toTopic && t.graph.nodes.some(n => n.id === link.toNode));
 }
 export function pruneConceptLinks(db) { db.conceptLinks = (db.conceptLinks || []).filter(l => validConceptLink(db, l)); }
+export function conceptLinkFields(body) {
+  if (typeof body.label !== 'string' || !body.label.trim() || body.label.trim().length > 120) throw new Error('Use a relationship name of 1–120 characters.');
+  if (body.source !== undefined && (typeof body.source !== 'string' || body.source.length > 2000)) throw new Error('Use a source title or URL of at most 2,000 characters.');
+  return { label: body.label.trim(), source: (body.source || '').trim() };
+}
