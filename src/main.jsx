@@ -1,3 +1,4 @@
+import { WorkspaceConnection } from './WorkspaceConnection.jsx';
 import { WorkspaceSearch } from './WorkspaceSearch.jsx';
 import { BackupDownloads } from './BackupDownloads.jsx';
 import { useTopicDraft } from './drafts.js';
@@ -28,6 +29,8 @@ function App() {
   }
   const [path, setPath] = useState(location.pathname);
   const [loaded, setLoaded] = useState(false);
+  const [connection, setConnection] = useState({ online: navigator.onLine, live: 'connecting', lastLoaded: null, loadError: '' });
+  const reconnect = useRef();
   useEffect(() => {
     const onPop = () => { setPath(location.pathname); setTab('cards'); setModal(null); };
     window.addEventListener('popstate', onPop);
@@ -40,11 +43,40 @@ function App() {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const topic = db.topics.find(t => t.id === active); const job = jobs[active];
-  async function refresh() { const data = await api('/state'); setDb(data); setLoaded(true); setJobs(Object.fromEntries(data.jobs.map(j => [j.topicId, j]))); return data; }
+  async function refresh() {
+    try {
+      const data = await api('/state'); setDb(data); setLoaded(true); setJobs(Object.fromEntries(data.jobs.map(j => [j.topicId, j])));
+      setConnection(s => ({ ...s, lastLoaded: Date.now(), loadError: '' })); return data;
+    } catch (e) { setConnection(s => ({ ...s, loadError: e.message || 'Could not reach the home PC.' })); throw e; }
+  }
+  async function retryConnection() { reconnect.current?.(); await refresh().catch(() => {}); }
   async function checkAccount() { setAccount(await api('/account')); }
   useEffect(() => { const handler = e => { if (e.origin !== location.origin || e.data?.type !== 'lumen:studio-imported') return; refresh().then(() => { setActive(e.data.topicId); setTab('cards'); }).catch(fail); }; window.addEventListener('message', handler); return () => window.removeEventListener('message', handler); }, []);
   const fail = e => setError(e.message || String(e));
-  useEffect(() => { refresh().catch(fail); checkAccount().catch(fail); const events = new EventSource('/api/events'); events.onmessage = ({ data }) => { const e = JSON.parse(data); if (e.type === 'anki') { refresh().catch(fail); return; } if (e.type === 'account') { checkAccount().catch(fail); if (e.error) setError(e.error); return; } if (['done', 'failed'].includes(e.type)) { refresh().catch(fail); if (e.error) setError(e.error); } else setJobs(old => ({ ...old, [e.topicId]: { ...old[e.topicId], ...e } })); }; events.onopen = () => refresh().catch(fail); return () => events.close(); }, []);
+  useEffect(() => {
+    refresh().catch(() => {}); checkAccount().catch(fail);
+    let events;
+    const connect = () => {
+      if (events) { events.onopen = null; events.onerror = null; events.onmessage = null; events.close(); }
+      setConnection(s => ({ ...s, live: 'connecting' }));
+      events = new EventSource('/api/events');
+      events.onerror = () => setConnection(s => ({ ...s, live: 'reconnecting' }));
+      events.onopen = () => { setConnection(s => ({ ...s, live: 'connected' })); refresh().catch(() => {}); };
+      events.onmessage = ({ data }) => {
+        let e; try { e = JSON.parse(data); } catch { refresh().catch(() => {}); return; }
+        if (e.type === 'anki') { refresh().catch(() => {}); return; }
+        if (e.type === 'account') { checkAccount().catch(fail); if (e.error) setError(e.error); return; }
+        if (['done', 'failed'].includes(e.type)) { refresh().catch(() => {}); if (e.error) setError(e.error); }
+        else if (e.topicId) setJobs(old => ({ ...old, [e.topicId]: { ...old[e.topicId], ...e } }));
+      };
+    };
+    reconnect.current = connect; connect();
+    const offline = () => setConnection(s => ({ ...s, online: false }));
+    const online = () => { setConnection(s => ({ ...s, online: true })); connect(); refresh().catch(() => {}); };
+    const visible = () => { if (!document.hidden && navigator.onLine) refresh().catch(() => {}); };
+    window.addEventListener('offline', offline); window.addEventListener('online', online); document.addEventListener('visibilitychange', visible);
+    return () => { events.onopen = null; events.onerror = null; events.onmessage = null; events.close(); reconnect.current = null; window.removeEventListener('offline', offline); window.removeEventListener('online', online); document.removeEventListener('visibilitychange', visible); };
+  }, []);
   useEffect(() => { try { if (active) localStorage.setItem('lumen-topic', active); else localStorage.removeItem('lumen-topic'); } catch {} setStudioProject(''); setStudioVisited(false); }, [active]);
   useEffect(() => { if (tab === 'studio') setStudioVisited(true); }, [tab]);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth' }); }, [topic?.messages.length, job?.text]);
@@ -70,7 +102,7 @@ function App() {
   const studiedDays = new Set(db.reviews.map(r => r.at.slice(0, 10))).size;
   if (reviewTopicId) return <main className="review-page" aria-label="Flashcard review">
     <header className="review-page-header"><button className="button secondary" onClick={exitReview}><ArrowLeft size={16}/>Back to flashcards</button><span>LUMEN / REVIEW</span></header>
-    <div className="review-page-content"><div className="review-page-title"><div className="eyebrow">A MOMENT TO REMEMBER</div><h1>{reviewTopic?.title || 'Flashcard review'}</h1><p>{reviewTopic?.anki?.enabled ? (db.anki?.connected ? 'Connected to Anki · Reviews sync automatically' : 'Anki unavailable · Reconnect desktop Anki to review linked cards') : 'Progress saved in Lumen'}</p></div>
+    <div className="review-page-content"><WorkspaceConnection status={connection} retry={retryConnection}/><div className="review-page-title"><div className="eyebrow">A MOMENT TO REMEMBER</div><h1>{reviewTopic?.title || 'Flashcard review'}</h1><p>{reviewTopic?.anki?.enabled ? (db.anki?.connected ? 'Connected to Anki · Reviews sync automatically' : 'Anki unavailable · Reconnect desktop Anki to review linked cards') : 'Progress saved in Lumen'}</p></div>
       {error && <p role="alert" className="form-error">{error}</p>}
       {reviewTopic?.anki?.enabled && db.anki?.error && <p className="sync-notice" role="status">{db.anki.error}</p>}
       {!loaded ? <p role="status">Loading your cards…</p> : !reviewTopic ? <p role="alert">This learning space could not be found.</p> : <Review key={reviewTopic.id} topic={reviewTopic} mutate={mutate} close={exitReview}/>}
@@ -88,7 +120,8 @@ function App() {
       <div className="sidebar-bottom"><div className="growth"><Sprout size={22}/><div><strong>{db.reviews.length ? 'Growing your knowledge' : 'Room to grow'}</strong><p>{db.reviews.length} reviews · {studiedDays} study days</p></div></div><button className="account" onClick={account?.connected ? () => setModal({ type: 'account' }) : login}><span className={'status-dot ' + (account?.connected ? 'online' : '')}/><span>{account === null ? 'Connecting to Codex…' : account.connected ? 'Codex connected' : 'Connect Codex'}<small>{account?.connected ? 'Your subscription · private workspace' : 'Sign in with your ChatGPT account'}</small></span><ArrowUpRight size={15}/></button></div>
     </aside>
     <main>
-      <header><div className="breadcrumb"><span>My workspace</span><ChevronRight size={14}/><strong>{topic?.title || 'Overview'}</strong></div><div className="header-actions"><span className="local-badge"><span/>Saved to your workspace</span><button title={focus ? 'Exit focus mode' : 'Focus mode'} aria-label="Toggle focus mode" onClick={() => setFocus(!focus)}><Focus size={18}/></button><button title="Full screen" aria-label="Full screen" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen())?.catch(fail)}><Maximize2 size={17}/></button></div></header>
+      <header><div className="breadcrumb"><span>My workspace</span><ChevronRight size={14}/><strong>{topic?.title || 'Overview'}</strong></div><div className="header-actions"><span className={'local-badge ' + (connection.online && connection.live === 'connected' && !connection.loadError ? '' : 'connection-stale')}><span/>{connection.online && connection.live === 'connected' && !connection.loadError ? 'Connected to workspace' : 'Connection interrupted'}</span><button title={focus ? 'Exit focus mode' : 'Focus mode'} aria-label="Toggle focus mode" onClick={() => setFocus(!focus)}><Focus size={18}/></button><button title="Full screen" aria-label="Full screen" onClick={() => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen())?.catch(fail)}><Maximize2 size={17}/></button></div></header>
+      <WorkspaceConnection status={connection} retry={retryConnection}/>
       {error && <div className="error" role="alert"><span>{error}</span><button aria-label="Dismiss error" onClick={() => setError('')}><X size={16}/></button></div>}
       {!topic && tab === 'studio' ? <StudioWorkspace key={studioProject || 'library'} projectId={studioProject} fail={fail}/> : !topic ? <div className="home"><div className="eyebrow"><Sun size={16}/> A SPACE TO UNDERSTAND</div><h1>Follow your curiosity.<br/><em>Make it stay.</em></h1><p className="intro">A thoughtful companion for deeper learning. Explore a question,<br className="desktop"/> connect the ideas, and remember what matters.</p><LearningOverview db={db} now={now} openTopic={id => { setActive(id); setTab('conversation'); }} review={id => navigate(`/review/${id}`)}/><div className="start-options"><button onClick={() => setModal({ type: 'topic' })}><span className="tile-icon"><Sparkles/></span><h3>Explore something new</h3><p>Bring a question. We’ll find a way in.</p><span className="tile-action">Start a topic <ArrowUpRight size={17}/></span></button><button onClick={() => setModal({ type: 'topic', upload: true })}><span className="tile-icon peach"><FileText/></span><h3>Start with your material</h3><p>A paper, your notes, a chapter to unpack.</p><span className="tile-action">Bring your sources <ArrowUpRight size={17}/></span></button></div><div className="journey"><span>EXPLORE</span><i/><span>UNDERSTAND</span><i/><span>CONNECT</span><i/><span>REMEMBER</span></div><div className="home-footer"><Sprout size={20}/><p>Understanding takes time. This is a place to give it some.</p></div></div> : <>
       <div className="topic-heading"><div><div className="eyebrow">LEARNING SPACE</div><h1>{topic.title}<button aria-label="Rename topic" onClick={() => setModal({ type: 'rename', title: topic.title })}><Pencil size={15}/></button></h1><p>{topic.sources.length} sources <span>·</span> {topic.graph.nodes.length} connected concepts <span>·</span> {topic.cards.filter(c => !c.suspended).length} flashcards</p></div><button className="button secondary" disabled={!!job || !account?.connected || !topic.messages.length && !topic.sources.length} onClick={() => send('Turn what we have studied into a concept map and a set of focused flashcards.', 'build')}><Sparkles size={16}/>Build learning kit</button></div>

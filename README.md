@@ -32,6 +32,8 @@ The overview puts learning spaces with ready cards first, with title search, rea
 
 **Search all knowledge** in the sidebar searches saved topics, concept descriptions, source passages, and flashcards across spaces. Results open the specific source, concept inspector, or card. Answers remain hidden in previews, and searching does not create review records. Studio projects appear after their cards are added to Lumen.
 
+If the connection to your home PC drops, Lumen shows a notice in both the workspace and review page. Loaded material stays visible and unsent drafts remain in the browser. **Retry connection** reconnects without a page reload; returning online or reopening the tab refreshes the workspace. Lumen does not queue offline reviews or automatically replay messages.
+
 ## Data and access
 
 - Topics, messages, extracted source text, graphs, cards, and review history are saved in `data/workspace.json`. Codex stores its own conversation history through its normal local storage.

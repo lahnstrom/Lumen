@@ -45,6 +45,7 @@ If you cannot install or use a personal VPN on the work computer, use your phone
 | What you see | What to do |
 | --- | --- |
 | Page does not connect | Check Tailscale is connected on both devices and the PC is awake. Try mobile data. |
+| **Live updates interrupted** or **Workspace refresh interrupted** | Check Tailscale and that the home PC is awake, then choose **Retry connection**. Loaded material may be stale. Unsent drafts stay in this browser; reviews are not queued offline. |
 | Old Flashcard Studio instead of Lumen | Include **:8443** in the URL. |
 | **502** | The proxy is reachable, but Lumen/WSL is stopped. Use the commands below on the home PC. |
 | **403** | Use the same authorized Tailscale account as at home. Lumen's exact origin and user allowlist must match; do not remove the allowlist. |
