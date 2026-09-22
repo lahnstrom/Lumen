@@ -1,0 +1,23 @@
+import { test, expect } from '@playwright/test';
+test('overview surfaces older due spaces, reveals the full collection, and filters without reviewing', async ({ page }) => {
+  const topics = Array.from({ length: 9 }, (_, i) => ({ id: `overview-${i}`, title: `Overview space ${i}`, sources: [], messages: [], graph: { nodes: [], edges: [] }, cards: i === 8 ? [{ id: 'due', front: 'Recall?', back: 'Answer', due: '2020-01-01T00:00:00Z', reviews: 0 }] : [] }));
+  topics[7].cards = [{ id: 'paused', front: 'Paused?', back: 'Answer', reviews: 3, anki: { cardId: 2, queue: -1, dueNow: true } }];
+  await page.route('**/api/state', route => route.fulfill({ json: { topics, reviews: [], jobs: [], anki: {} } }));
+  await page.goto('/');
+  const overview = page.getByRole('region', { name: 'Your learning overview' });
+  await expect(overview.getByRole('article')).toHaveCount(6);
+  await expect(overview.getByRole('article').first()).toHaveAccessibleName('Overview space 8');
+  await overview.getByRole('button', { name: /Show more spaces/ }).click();
+  await expect(overview.getByRole('article')).toHaveCount(9);
+  await expect(overview.getByRole('article', { name: 'Overview space 7', exact: true })).toContainText('0 available cards');
+  await overview.getByRole('button', { name: 'Ready to review', exact: true }).click();
+  await expect(overview.getByRole('article')).toHaveCount(1);
+  await expect(overview.getByRole('button', { name: 'Review 1', exact: true })).toBeVisible();
+  await overview.getByLabel('Find a learning space').fill('no such space');
+  await expect(overview.getByText('No spaces match this view.')).toBeVisible();
+  await overview.getByRole('button', { name: 'Show all learning spaces' }).click();
+  await overview.getByLabel('Sort learning spaces').selectOption('alphabetical');
+  await expect(overview.getByRole('article').first()).toHaveAccessibleName('Overview space 0');
+  await overview.getByRole('button', { name: 'Overview space 0', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Overview space 0' })).toBeVisible();
+});
