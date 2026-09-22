@@ -21,3 +21,9 @@ test('local access remains available and remote access is disabled by default', 
   assert.throws(() => createAccessPolicy({ LUMEN_TAILSCALE_ORIGIN: remote }));
   assert.throws(() => createAccessPolicy({ LUMEN_TAILSCALE_ORIGIN: 'http://study.example.ts.net', LUMEN_TAILSCALE_USERS: 'learner@example.com' }));
 });
+
+test('explicit Tailscale HTTPS ports are allowed without allowing other ports', () => {
+  const gate = createAccessPolicy({ LUMEN_TAILSCALE_ORIGIN: remote + ':8443', LUMEN_TAILSCALE_USERS: 'learner@example.com' });
+  assert.equal(check({ host: 'study.example.ts.net:8443', origin: remote + ':8443', 'tailscale-user-login': 'learner@example.com' }, gate), 200);
+  assert.equal(check({ host: 'study.example.ts.net:443', origin: remote, 'tailscale-user-login': 'learner@example.com' }, gate), 403);
+});

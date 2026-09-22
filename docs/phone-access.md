@@ -53,3 +53,22 @@ To move hosts, stop Lumen and copy `data/workspace.json` to the new host's `data
 - Turn off this Serve endpoint with `tailscale serve --https=443 off`.
 
 Reference: [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve) and [CLI reference](https://tailscale.com/docs/reference/tailscale-cli/serve).
+
+## Windows Tailscale with Lumen in WSL
+
+Windows Tailscale Serve can reach a WSL-hosted Lumen through Windows localhost forwarding. Check `http://127.0.0.1:4317` from Windows first. From WSL, the Windows CLI is available as `tailscale.exe`.
+
+If port 443 already serves another app, preserve it and use a separate port:
+
+```sh
+tailscale.exe serve --bg --https=8443 http://127.0.0.1:4317
+```
+
+Set `LUMEN_TAILSCALE_ORIGIN` to the exact HTTPS URL including `:8443`. Lumen reads optional `.env` settings from its project directory at startup (existing process environment variables take precedence). Keep the file local; Git ignores it:
+
+```dotenv
+LUMEN_TAILSCALE_ORIGIN=https://your-host.your-tailnet.ts.net:8443
+LUMEN_TAILSCALE_USERS=you@example.com
+```
+
+Restart Lumen after changing the file. On the phone, connect Tailscale and visit this URL. To remove only this endpoint, run `tailscale.exe serve --https=8443 off`.

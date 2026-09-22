@@ -4,7 +4,7 @@ export function createAccessPolicy(env = process.env) {
   let remote = null;
   if (configured) {
     remote = new URL(configured);
-    if (remote.protocol !== 'https:' || !remote.hostname.endsWith('.ts.net') || remote.port || remote.pathname !== '/' || remote.search || remote.hash || remote.username || remote.password || !users.size) {
+    if (remote.protocol !== 'https:' || !remote.hostname.endsWith('.ts.net') || remote.pathname !== '/' || remote.search || remote.hash || remote.username || remote.password || !users.size) {
       throw new Error('Phone access needs an HTTPS .ts.net origin and LUMEN_TAILSCALE_USERS containing allowed Tailscale login names.');
     }
   }

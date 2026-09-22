@@ -8,6 +8,7 @@ import { newSchedule, migrateWorkspace, reviewOptions, scheduleResult, intervalL
 import { Codex } from './codex.js';
 import { id, newTopic, ankiExport, bundleSchema, applyBundle } from './domain.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+if (existsSync(path.join(root, '.env'))) process.loadEnvFile(path.join(root, '.env'));
 const dataDir = process.env.LUMEN_DATA_DIR || path.join(root, 'data');
 mkdirSync(dataDir, { recursive: true });
 const dbPath = path.join(dataDir, 'workspace.json');
