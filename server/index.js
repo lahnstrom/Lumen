@@ -117,7 +117,8 @@ app.post('/api/topics/:topicId/cards/:cardId/review', async (req, res) => {
   const i = req.topic.cards.findIndex(c => c.id === req.params.cardId);
   if (i < 0) return res.status(404).json({ error: 'Card not found.' });
   const card = req.topic.cards[i];
-  if (card.anki?.cardId) return res.json(await anki.answer(card, req.body.grade, req.body.token));
+  const receipt = () => ({ ...req.topic, saved: true, reviewReceipt: { cardId: card.id, reviews: db.reviews.filter(r => r.topicId === req.topic.id && r.cardId === card.id) } });
+  if (card.anki?.cardId) { await anki.answer(card, req.body.grade, req.body.token); return res.json(receipt()); }
   const preview = reviewPreviews.get(req.body.token);
   if (!preview || preview.topicId !== req.topic.id || preview.cardId !== card.id || Date.now() - preview.at > 1800000 || preview.snapshot !== JSON.stringify(card)) {
     return res.status(409).json({ error: 'This review has expired or the card was reviewed elsewhere. Close and reopen the review.' });
@@ -126,7 +127,7 @@ app.post('/api/topics/:topicId/cards/:cardId/review', async (req, res) => {
   if (!Object.hasOwn(preview.outcomes, req.body.grade)) return res.status(400).json({ error: 'Unknown review grade.' });
   req.topic.cards[i] = scheduleResult(card, result, req.body.grade);
   db.reviews.push({ id: id(), topicId: req.topic.id, cardId: card.id, grade: req.body.grade, at: preview.at.toISOString(), answeredAt: new Date().toISOString(), scheduler: SCHEDULER_VERSION, log: result.log, before: card.fsrs, after: result.card });
-  save(); reviewPreviews.delete(req.body.token); res.json(req.topic);
+  save(); reviewPreviews.delete(req.body.token); res.json(receipt());
 });
 app.put('/api/topics/:topicId/graph', (req, res) => { req.topic.graph = validateGraph(req.body, req.topic.cards); pruneConceptLinks(db); save(); res.json(req.topic); });
 app.patch('/api/topics/:topicId/graph/layout', (req, res) => {

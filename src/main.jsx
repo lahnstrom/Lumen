@@ -1,3 +1,4 @@
+import { applySavedResult } from './saved-results.js';
 import { WorkspaceConnection } from './WorkspaceConnection.jsx';
 import { WorkspaceSearch } from './WorkspaceSearch.jsx';
 import { BackupDownloads } from './BackupDownloads.jsx';
@@ -30,7 +31,7 @@ function App() {
   const [path, setPath] = useState(location.pathname);
   const [loaded, setLoaded] = useState(false);
   const [connection, setConnection] = useState({ online: navigator.onLine, live: 'connecting', lastLoaded: null, loadError: '' });
-  const reconnect = useRef();
+  const reconnect = useRef(); const latestRefresh = useRef(0);
   useEffect(() => {
     const onPop = () => { setPath(location.pathname); setTab('cards'); setModal(null); };
     window.addEventListener('popstate', onPop);
@@ -44,10 +45,11 @@ function App() {
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const topic = db.topics.find(t => t.id === active); const job = jobs[active];
   async function refresh() {
+    const request = ++latestRefresh.current;
     try {
-      const data = await api('/state'); setDb(data); setLoaded(true); setJobs(Object.fromEntries(data.jobs.map(j => [j.topicId, j])));
-      setConnection(s => ({ ...s, lastLoaded: Date.now(), loadError: '' })); return data;
-    } catch (e) { setConnection(s => ({ ...s, loadError: e.message || 'Could not reach the home PC.' })); throw e; }
+      const data = await api('/state'); if (request !== latestRefresh.current) return data; setDb(data); setLoaded(true); setJobs(Object.fromEntries(data.jobs.map(j => [j.topicId, j])));
+      setConnection(s => ({ ...s, lastLoaded: Date.now(), loadError: '', savedWhileStale: false })); return data;
+    } catch (e) { if (request === latestRefresh.current) setConnection(s => ({ ...s, loadError: e.message || 'Could not reach the home PC.' })); throw e; }
   }
   async function retryConnection() { reconnect.current?.(); await refresh().catch(() => {}); }
   async function checkAccount() { setAccount(await api('/account')); }
@@ -80,7 +82,13 @@ function App() {
   useEffect(() => { try { if (active) localStorage.setItem('lumen-topic', active); else localStorage.removeItem('lumen-topic'); } catch {} setStudioProject(''); setStudioVisited(false); }, [active]);
   useEffect(() => { if (tab === 'studio') setStudioVisited(true); }, [tab]);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth' }); }, [topic?.messages.length, job?.text]);
-  async function mutate(url, method, body) { const result = await api(url, { method, body }); await refresh(); return result; }
+  async function mutate(url, method, body) {
+    const result = await api(url, { method, body });
+    latestRefresh.current++; // An older read must not undo the acknowledged save.
+    setDb(current => applySavedResult(current, url, result));
+    setConnection(s => ({ ...s, savedWhileStale: true }));
+    await refresh().catch(() => {}); return result;
+  }
   async function createTopic(title) { const t = await mutate('/topics', 'POST', { title }); setActive(t.id); setTab('conversation'); setModal(null); return t; }
   async function send(message, mode = 'chat', target = active) {
     const fromDraft = message === undefined;
