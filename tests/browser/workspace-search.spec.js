@@ -1,0 +1,43 @@
+import { test, expect } from '@playwright/test';
+test('workspace search opens exact cards, source passages, and concept details without reviews', async ({ page, request }) => {
+  const topic = await (await request.post('/api/topics', { data: { title: 'Search practice' } })).json();
+  await request.post(`/api/topics/${topic.id}/cards`, { data: { front: 'First question', back: 'A hidden zephyr answer' } });
+  await request.post(`/api/topics/${topic.id}/cards`, { data: { front: 'Second question', back: 'Other answer' } });
+  await request.post(`/api/topics/${topic.id}/sources`, { data: { title: 'Search reference', content: 'The zephyr passage in our notes.' } });
+  await request.put(`/api/topics/${topic.id}/graph`, { data: { nodes: [{ id: 'zephyr', label: 'Zephyr concept', description: 'Connects the reference to recall.' }], edges: [] } });
+  const before = (await (await request.get('/api/state')).json()).reviews.length;
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Search workspace', exact: true }).click();
+  await page.getByLabel('Search saved knowledge').fill('zephyr');
+  await expect(page.getByRole('dialog').getByText('A hidden zephyr answer')).toHaveCount(0);
+  await page.getByRole('button', { name: /Search practice · card First question/ }).click();
+  await expect(page.locator('.library-card')).toHaveCount(1);
+  await expect(page.locator('.library-card h3')).toHaveText('First question');
+  await expect(page.getByText('A hidden zephyr answer', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show all cards', exact: true }).click();
+  await expect(page.locator('.library-card')).toHaveCount(2);
+  // Reopening the same result must select that card again.
+  await page.getByRole('button', { name: 'Search workspace', exact: true }).click();
+  await page.getByLabel('Search saved knowledge').fill('zephyr');
+  await page.getByRole('button', { name: /Search practice · card First question/ }).click();
+  await expect(page.locator('.library-card')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Search workspace', exact: true }).click();
+  await page.getByLabel('Search saved knowledge').fill('zephyr');
+  await page.getByRole('button', { name: /Search practice · source Search reference/ }).click();
+  await expect(page.getByRole('dialog').getByText('The zephyr passage in our notes.')).toBeVisible();
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.getByRole('button', { name: 'Search workspace', exact: true }).click();
+  await page.getByLabel('Search saved knowledge').fill('zephyr');
+  await page.getByRole('button', { name: /Search practice · concept Zephyr concept/ }).click();
+  await expect(page.getByRole('complementary', { name: 'Concept details' })).toContainText('Connects the reference to recall.');
+  expect((await (await request.get('/api/state')).json()).reviews.length).toBe(before);
+});
+test('workspace search fits a phone viewport and supports keyboard dismissal', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/'); await page.getByRole('button', { name: 'Search workspace', exact: true }).click();
+  await expect(page.getByLabel('Search saved knowledge')).toBeFocused();
+  await page.getByLabel('Search saved knowledge').fill('no-such-saved-phrase');
+  await expect(page.getByText('No matches yet.', { exact: false })).toBeVisible();
+  const box = await page.getByRole('dialog').boundingBox(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press('Escape'); await expect(page.getByRole('dialog')).toHaveCount(0);
+});

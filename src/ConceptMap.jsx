@@ -23,13 +23,13 @@ function CrossLinkEditor({ edge, save, busy }) {
   return <form className="inspector-section" onSubmit={e => { e.preventDefault(); save({ label, source }); }}><h4>Edit this relationship</h4><label className="inspector-label">Relationship<input required maxLength={120} aria-label="Edit relationship" value={label} onChange={e => setLabel(e.target.value)}/></label><label className="inspector-label">Source title or URL<input maxLength={2000} aria-label="Edit relationship source" value={source} onChange={e => setSource(e.target.value)}/></label><button className="button secondary" disabled={busy || !label.trim()} type="submit"><Check size={14}/>Save relationship</button></form>;
 }
 
-export function ConceptMap({ topic, topics, links = [], onEdit, onAsk, onOpenTopic, onLayout, onLink, onUnlink, onUpdateLink, onCards, onAttachCard }) {
-  const [atlas, setAtlas] = useState(false), [selected, setSelected] = useState(null), [selectedEdge, setSelectedEdge] = useState(null), [query, setQuery] = useState(''), [focus, setFocus] = useState(false), [expanded, setExpanded] = useState(false), [instance, setInstance] = useState(null), [error, setError] = useState(''), [saving, setSaving] = useState(false), [target, setTarget] = useState(''), [relationship, setRelationship] = useState('relates to'), [relationshipSource, setRelationshipSource] = useState('');
+export function ConceptMap({ initialNodeId, topic, topics, links = [], onEdit, onAsk, onOpenTopic, onLayout, onLink, onUnlink, onUpdateLink, onCards, onAttachCard }) {
+  const [atlas, setAtlas] = useState(false), [selected, setSelected] = useState(() => initialNodeId ? nodeKey(topic.id, initialNodeId) : null), [selectedEdge, setSelectedEdge] = useState(null), [query, setQuery] = useState(''), [focus, setFocus] = useState(false), [expanded, setExpanded] = useState(false), [instance, setInstance] = useState(null), [error, setError] = useState(''), [saving, setSaving] = useState(false), [target, setTarget] = useState(''), [relationship, setRelationship] = useState('relates to'), [relationshipSource, setRelationshipSource] = useState('');
   const signature = JSON.stringify([topics.map(t => [t.id, t.title, t.graph, t.cards.map(c => [c.id, c.reviews, c.suspended, c.front, c.due, c.anki?.dueNow])]), links, topic.id, atlas]);
   const model = useMemo(() => buildGraph(topics, links, topic.id, atlas), [signature]);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   useEffect(() => { setNodes(layoutGraph(model.nodes, model.edges, !atlas)); }, [model]);
-  useEffect(() => { setSelected(null); setSelectedEdge(null); setFocus(false); }, [atlas, topic.id]);
+  useEffect(() => { setSelected(!atlas && initialNodeId ? nodeKey(topic.id, initialNodeId) : null); setSelectedEdge(null); setFocus(false); }, [atlas, topic.id, initialNodeId]);
   useEffect(() => { if (instance && nodes.length) { const timer = setTimeout(() => instance.fitView({ padding: .2, duration: 350, maxZoom: 1 }), 80); return () => clearTimeout(timer); } }, [instance, atlas, topic.id, nodes.length, expanded]);
   const node = model.nodes.find(n => n.id === selected), edge = model.edges.find(e => e.id === selectedEdge);
   const neighborhoodIds = neighborhood(model.nodes, model.edges, focus ? selected : null);

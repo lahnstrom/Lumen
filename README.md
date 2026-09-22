@@ -28,6 +28,8 @@ Open **http://localhost:4317**. If Codex is not signed in, select **Connect Code
 7. Open **Studio** for cloze editing, image occlusion, and `.apkg` export. Use **Use topic sources** to start from your material; **Add to Lumen reviews** connects enabled drafts to this topic’s FSRS queue. Existing Studio workspaces are also available from the sidebar.
 8. Choose **Connect Anki** on the Flashcards tab for automatic review synchronization. Or select **Anki** to download a TSV. In Anki, import it as Basic notes with Front, Back, and Tags fields. Source attribution is included on the back.
 
+**Search all knowledge** in the sidebar searches saved topics, concept descriptions, source passages, and flashcards across spaces. Results open the specific source, concept inspector, or card. Answers remain hidden in previews, and searching does not create review records. Studio projects appear after their cards are added to Lumen.
+
 ## Data and access
 
 - Topics, messages, extracted source text, graphs, cards, and review history are saved in `data/workspace.json`. Codex stores its own conversation history through its normal local storage.
